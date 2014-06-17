@@ -25,6 +25,9 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/time.h>
+#ifdef CONFIG_CPUFREQ_HARDLIMIT
+#include <linux/cpufreq_hardlimit.h>
+#endif
 
 struct cpu_sync {
 	struct delayed_work boost_rem;
@@ -154,10 +157,34 @@ static void run_boost_migration(unsigned int cpu)
 	}
 
 	cancel_delayed_work_sync(&s->boost_rem);
-	if (sync_threshold)
+	if (sync_threshold) {
+#ifdef CONFIG_CPUFREQ_HARDLIMIT
+		#ifdef CPUFREQ_HARDLIMIT_DEBUG
+		pr_info("[HARDLIMIT] cpu-boost.c run_boost_migration (A) : sync_threshold = %u / src_policy.cur = %u / old_boost_min = %u / new_boost_min = %u \n",
+				sync_threshold,
+				src_policy.cur,
+				s->boost_min,
+				check_cpufreq_hardlimit(min(sync_threshold, src_policy.cur))
+			);
+		#endif
+		s->boost_min = check_cpufreq_hardlimit(min(sync_threshold, src_policy.cur)); /* Yank555.lu - Enforce hardlimit */
+#else
 		s->boost_min = min(sync_threshold, src_policy.cur);
-	else
+#endif
+	} else {
+#ifdef CONFIG_CPUFREQ_HARDLIMIT
+		#ifdef CPUFREQ_HARDLIMIT_DEBUG
+		pr_info("[HARDLIMIT] cpu-boost.c run_boost_migration (B) : src_policy.cur = %u / old_boost_min = %u / new_boost_min = %u \n",
+				src_policy.cur,
+				s->boost_min,
+				check_cpufreq_hardlimit(min(sync_threshold, src_policy.cur))
+			);
+		#endif
+		s->boost_min = check_cpufreq_hardlimit(src_policy.cur); /* Yank555.lu - Enforce hardlimit */
+#else
 		s->boost_min = src_policy.cur;
+#endif
+	}
 
 	/* Force policy re-evaluation to trigger adjust notifier. */
 	get_online_cpus();
