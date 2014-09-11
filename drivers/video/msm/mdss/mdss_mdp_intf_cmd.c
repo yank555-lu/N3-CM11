@@ -550,7 +550,6 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	unsigned long flags;
 	int need_wait = 0;
 	int rc = 0;
-	int flush_wq = (int) arg;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -591,9 +590,6 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 #if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
 	xlog(__func__,ctl->num, ctx->koff_cnt, ctx->clk_enabled, ctx->rdptr_enabled, 0, rc);
 #endif
-
-	if (flush_wq)
-		flush_work_sync(&ctx->pp_done_work);
 
 	return rc;
 }
